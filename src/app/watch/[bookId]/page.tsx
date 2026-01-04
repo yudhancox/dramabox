@@ -3,15 +3,7 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { useDramaDetail, useEpisodes } from "@/hooks/useDramaDetail";
-import {
-  ChevronLeft,
-  ChevronRight,
-  Play,
-  Loader2,
-  Settings,
-  Maximize2,
-  Minimize2,
-} from "lucide-react";
+import { ChevronLeft, Settings } from "lucide-react";
 import Link from "next/link";
 import {
   DropdownMenu,
@@ -29,27 +21,25 @@ export default function WatchPage() {
   const router = useRouter();
 
   const [currentEpisode, setCurrentEpisode] = useState(0);
-  const [currentPage, setCurrentPage] = useState(0);
   const [quality, setQuality] = useState(720);
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(true);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
-  const { data: detailData, isLoading: detailLoading } = useDramaDetail(bookId || "");
-  const { data: episodes, isLoading: episodesLoading } = useEpisodes(bookId || "");
+  const { data: detailData } = useDramaDetail(bookId || "");
+  const { data: episodes } = useEpisodes(bookId || "");
 
   useEffect(() => {
     const ep = parseInt(searchParams.get("ep") || "0", 10);
-    if (ep >= 0) {
-      setCurrentEpisode(ep);
-      setCurrentPage(Math.floor(ep / EPISODES_PER_PAGE));
-    }
+    if (ep >= 0) setCurrentEpisode(ep);
   }, [searchParams]);
 
-  const handleEpisodeChange = (index: number) => {
-    setCurrentEpisode(index);
-    router.push(`/watch/${bookId}?ep=${index}`);
-  };
+  useEffect(() => {
+    document.body.style.overflow = isFullscreen ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isFullscreen]);
 
   const currentEpisodeData = useMemo(() => {
     if (!episodes) return null;
@@ -59,9 +49,8 @@ export default function WatchPage() {
   const defaultCdn = useMemo(() => {
     if (!currentEpisodeData) return null;
     return (
-      currentEpisodeData.cdnList.find((cdn) => cdn.isDefault === 1) ||
-      currentEpisodeData.cdnList[0] ||
-      null
+      currentEpisodeData.cdnList.find((c) => c.isDefault === 1) ||
+      currentEpisodeData.cdnList[0]
     );
   }, [currentEpisodeData]);
 
@@ -75,133 +64,60 @@ export default function WatchPage() {
   }, [defaultCdn]);
 
   useEffect(() => {
-    if (!availableQualities.length) return;
     if (!availableQualities.includes(quality)) {
       setQuality(availableQualities[0]);
     }
   }, [availableQualities, quality]);
 
-  useEffect(() => {
-    document.body.style.overflow = isFullscreen ? "hidden" : "";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [isFullscreen]);
-
   const getVideoUrl = () => {
-    if (!currentEpisodeData || !defaultCdn) return "";
-    const videoPath =
+    if (!defaultCdn) return "";
+    const video =
       defaultCdn.videoPathList.find((v) => v.quality === quality) ||
-      defaultCdn.videoPathList.find((v) => v.isDefault === 1) ||
       defaultCdn.videoPathList[0];
-    return videoPath?.videoPath || "";
+    return video?.videoPath || "";
   };
-
-  const handleVideoEnded = () => {
-    if (!episodes) return;
-    const next = currentEpisode + 1;
-    if (next < episodes.length) handleEpisodeChange(next);
-  };
-
-  if (detailLoading || episodesLoading) {
-    return (
-      <main className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-10 h-10 animate-spin" />
-      </main>
-    );
-  }
-
-  if (!detailData?.data || !episodes) return null;
-
-  const { book } = detailData.data;
 
   return (
-    <main className="min-h-screen pt-20 pb-12">
-      <div className="max-w-7xl mx-auto px-4">
-        <Link href={`/detail/${bookId}`} className="flex items-center gap-2 mb-4">
-          <ChevronLeft /> Kembali
+    <>
+      {/* VIDEO FULLSCREEN */}
+      <div className="fixed inset-0 z-50 bg-black">
+        <video
+          ref={videoRef}
+          src={getVideoUrl()}
+          autoPlay
+          controls
+          playsInline
+          className="w-screen h-screen object-contain"
+          poster={currentEpisodeData?.chapterImg}
+        />
+
+        {/* BACK BUTTON */}
+        <Link
+          href={`/detail/${bookId}`}
+          className="absolute top-4 left-4 z-50 flex items-center gap-2 text-white bg-black/60 px-3 py-2 rounded-lg"
+        >
+          <ChevronLeft size={18} />
+          Kembali
         </Link>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6">
-          <div>
-            {/* VIDEO */}
-            <div
-              className={`bg-black overflow-hidden transition-all duration-300
-                ${
-                  isFullscreen
-                    ? "fixed inset-0 z-50 rounded-none"
-                    : "relative aspect-video rounded-2xl"
-                }
-              `}
-            >
-              <video
-                ref={videoRef}
-                key={`${currentEpisode}-${quality}`}
-                src={getVideoUrl()}
-                controls
-                autoPlay
-                onEnded={handleVideoEnded}
-                poster={currentEpisodeData?.chapterImg}
-                className="w-full h-full object-contain"
-              />
-
-              {/* FULLSCREEN BUTTON */}
-              <button
-                onClick={() => setIsFullscreen(!isFullscreen)}
-                className="absolute top-4 left-4 z-50 p-2 rounded-lg bg-black/60 text-white"
-              >
-                {isFullscreen ? <Minimize2 /> : <Maximize2 />}
+        {/* QUALITY */}
+        <div className="absolute top-4 right-4 z-50">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="p-2 rounded-lg bg-black/60 text-white">
+                <Settings size={18} />
               </button>
-
-              {/* QUALITY */}
-              <div className="absolute top-4 right-4 z-50">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button className="p-2 rounded-lg bg-black/60 text-white">
-                      <Settings />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    {availableQualities.map((q) => (
-                      <DropdownMenuItem key={q} onClick={() => setQuality(q)}>
-                        {q}p
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </div>
-
-            {/* INFO */}
-            <div className="mt-4">
-              <h1 className="text-xl font-bold">{book.bookName}</h1>
-              <p className="text-sm text-muted-foreground">
-                {currentEpisodeData?.chapterName}
-              </p>
-            </div>
-          </div>
-
-          {/* EPISODE LIST */}
-          <div>
-            <h2 className="font-bold mb-2">Daftar Episode</h2>
-            <div className="grid grid-cols-5 gap-2">
-              {episodes.map((ep) => (
-                <button
-                  key={ep.chapterId}
-                  onClick={() => handleEpisodeChange(ep.chapterIndex)}
-                  className={`aspect-square rounded ${
-                    currentEpisode === ep.chapterIndex
-                      ? "bg-primary text-white"
-                      : "bg-muted"
-                  }`}
-                >
-                  {ep.chapterIndex + 1}
-                </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {availableQualities.map((q) => (
+                <DropdownMenuItem key={q} onClick={() => setQuality(q)}>
+                  {q}p
+                </DropdownMenuItem>
               ))}
-            </div>
-          </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
-    </main>
+    </>
   );
-}                 
+}
