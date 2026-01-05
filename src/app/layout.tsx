@@ -27,9 +27,9 @@ export default function RootLayout({
           strategy="afterInteractive"
         />
 
-        {/* LOGIC ADSGRAM – TANPA COMPONENT */}
+        {/* LOGIC ADSGRAM – HANYA SAAT VIDEO PLAY */}
         <Script
-          id="adsgram-inline"
+          id="adsgram-video-play"
           strategy="afterInteractive"
           dangerouslySetInnerHTML={{
             __html: `
@@ -37,7 +37,6 @@ export default function RootLayout({
                 let adController = null;
                 let lastShown = 0;
                 const COOLDOWN = 300000; // 5 menit
-                let canShow = true;
 
                 function initAdsgram() {
                   if (!window.Adsgram) return;
@@ -50,33 +49,25 @@ export default function RootLayout({
 
                 function showAd() {
                   const now = Date.now();
-                  if (!canShow) return;
                   if (now - lastShown < COOLDOWN) return;
 
                   if (!adController) initAdsgram();
                   if (!adController) return;
 
-                  canShow = false;
-
                   adController.show()
                     .then(function () {
                       lastShown = now;
-                      setTimeout(function () {
-                        canShow = true;
-                      }, COOLDOWN);
                     })
-                    .catch(function () {
-                      canShow = true;
-                    });
+                    .catch(function () {});
                 }
 
-                function userTrigger() {
-                  showAd();
-                }
-
-                ["click", "touchstart", "scroll"].forEach(function (evt) {
-                  window.addEventListener(evt, userTrigger);
-                });
+                // Tangkap SEMUA video play (termasuk yang dimuat dinamis)
+                document.addEventListener("play", function (e) {
+                  const target = e.target;
+                  if (target && target.tagName === "VIDEO") {
+                    showAd();
+                  }
+                }, true);
               })();
             `,
           }}
