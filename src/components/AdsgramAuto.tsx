@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 
 declare global {
   interface Window {
@@ -8,32 +8,41 @@ declare global {
   }
 }
 
-export default function AdsgramAuto() {
-  const adControllerRef = useRef<any>(null);
+let adController: any = null;
+let lastShown = 0;
+const LIMIT = 300000; // 5 menit
 
+export default function AdsgramAuto() {
   useEffect(() => {
     if (!window.Adsgram) return;
 
-    adControllerRef.current = window.Adsgram.init({
+    adController = window.Adsgram.init({
       blockId: "int-20632",
     });
 
-    const showAd = async () => {
-      try {
-        const result = await adControllerRef.current.show();
-        console.log("Adsgram result:", result);
-      } catch (err) {
-        console.error("Adsgram error:", err);
-      }
+    const showAd = () => {
+      const now = Date.now();
+      if (now - lastShown < LIMIT) return;
+
+      adController
+        .show()
+        .then((result: any) => {
+          console.log("Adsgram selesai", result);
+          lastShown = now;
+        })
+        .catch((err: any) => {
+          console.error("Adsgram error", err);
+        });
     };
 
-    // Tampilkan pertama kali setelah load
-    showAd();
+    // WAJIB user interaction
+    const clickHandler = () => {
+      showAd();
+      document.removeEventListener("click", clickHandler);
+    };
 
-    // Interval 5 menit (300.000 ms)
-    const interval = setInterval(showAd, 300000);
+    document.addEventListener("click", clickHandler);
 
-    return () => clearInterval(interval);
   }, []);
 
   return null;
