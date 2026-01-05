@@ -21,17 +21,58 @@ export default function RootLayout({
   return (
     <html lang="id" suppressHydrationWarning>
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap"
-          rel="stylesheet"
-        />
-
-        {/* Adsgram Script */}
+        {/* Adsgram library */}
         <Script
           src="https://sad.adsgram.ai/js/sad.min.js"
           strategy="afterInteractive"
+        />
+
+        {/* Adsgram logic */}
+        <Script
+          id="adsgram-inline"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function () {
+                let adController = null;
+                let lastShown = 0;
+                const COOLDOWN = 300000; // 5 menit
+
+                function initAdsgram() {
+                  if (!window.Adsgram) return;
+                  if (!adController) {
+                    adController = window.Adsgram.init({
+                      blockId: "int-20632"
+                    });
+                  }
+                }
+
+                function showAd() {
+                  const now = Date.now();
+                  if (now - lastShown < COOLDOWN) return;
+                  if (!adController) initAdsgram();
+                  if (!adController) return;
+
+                  adController.show()
+                    .then(function () {
+                      lastShown = now;
+                    })
+                    .catch(function () {});
+                }
+
+                function triggerOnce() {
+                  showAd();
+                  window.removeEventListener("click", triggerOnce);
+                  window.removeEventListener("touchstart", triggerOnce);
+                  window.removeEventListener("scroll", triggerOnce);
+                }
+
+                window.addEventListener("click", triggerOnce, { once: true });
+                window.addEventListener("touchstart", triggerOnce, { once: true });
+                window.addEventListener("scroll", triggerOnce, { once: true });
+              })();
+            `,
+          }}
         />
       </head>
 
@@ -44,10 +85,6 @@ export default function RootLayout({
           {children}
 
           <Footer />
-
-          {/* Controller iklan */}
-          <AdsgramAuto />
-
           <Toaster />
           <Sonner />
         </Providers>
