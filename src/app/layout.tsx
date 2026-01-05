@@ -42,7 +42,7 @@ export default function RootLayout({
                   if (!window.Adsgram) return;
                   if (!adController) {
                     adController = window.Adsgram.init({
-                      blockId: "int-20632"
+                      blockId: "int-20645"
                     });
                   }
                 }
