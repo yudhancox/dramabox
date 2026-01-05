@@ -21,13 +21,13 @@ export default function RootLayout({
   return (
     <html lang="id" suppressHydrationWarning>
       <head>
-        {/* Adsgram library */}
+        {/* Library Adsgram */}
         <Script
           src="https://sad.adsgram.ai/js/sad.min.js"
           strategy="afterInteractive"
         />
 
-        {/* Adsgram logic */}
+        {/* LOGIC ADSGRAM – TANPA COMPONENT */}
         <Script
           id="adsgram-inline"
           strategy="afterInteractive"
@@ -37,6 +37,7 @@ export default function RootLayout({
                 let adController = null;
                 let lastShown = 0;
                 const COOLDOWN = 300000; // 5 menit
+                let canShow = true;
 
                 function initAdsgram() {
                   if (!window.Adsgram) return;
@@ -49,27 +50,33 @@ export default function RootLayout({
 
                 function showAd() {
                   const now = Date.now();
+                  if (!canShow) return;
                   if (now - lastShown < COOLDOWN) return;
+
                   if (!adController) initAdsgram();
                   if (!adController) return;
+
+                  canShow = false;
 
                   adController.show()
                     .then(function () {
                       lastShown = now;
+                      setTimeout(function () {
+                        canShow = true;
+                      }, COOLDOWN);
                     })
-                    .catch(function () {});
+                    .catch(function () {
+                      canShow = true;
+                    });
                 }
 
-                function triggerOnce() {
+                function userTrigger() {
                   showAd();
-                  window.removeEventListener("click", triggerOnce);
-                  window.removeEventListener("touchstart", triggerOnce);
-                  window.removeEventListener("scroll", triggerOnce);
                 }
 
-                window.addEventListener("click", triggerOnce, { once: true });
-                window.addEventListener("touchstart", triggerOnce, { once: true });
-                window.addEventListener("scroll", triggerOnce, { once: true });
+                ["click", "touchstart", "scroll"].forEach(function (evt) {
+                  window.addEventListener(evt, userTrigger);
+                });
               })();
             `,
           }}
